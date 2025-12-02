@@ -45,8 +45,6 @@ int tripCount = 0;      // Bien dem so luong chuyen xe hien co
 struct Ticket tickets[1000]; // Mang luu danh sach ve (Max 1000 ve)
 int ticketCount = 0;         // Bien dem so luong ve hien co
 
-// --- HAM TIEN ICH (HELPER FUNCTIONS) ---
-
 // Ham xoa bo nho dem ban phim
 // Tac dung: Xoa dau Enter (\n) thua con sot lai sau lenh scanf de tranh loi troi lenh fgets
 void clearInputBuffer() {
@@ -55,7 +53,7 @@ void clearInputBuffer() {
 }
 
 // Ham kiem tra du lieu dau vao
-// Tra ve 0 neu chuoi rong hoac chi chua toan dau cach (Space)
+// Tra ve 0 neu chuoi rong hoac chi chua toan dau cach
 // Tra ve 1 neu chuoi co du lieu hop le
 int hasData(char *str) {
     if (strlen(str) == 0)
@@ -68,7 +66,61 @@ int hasData(char *str) {
     return 0; // Toan dau cach
 }
 
-// Tim vi tri (index) cua chuyen xe trong mang trips dua theo tripId
+// Ham kiem tra nam nhuan
+int isLeapYear(int year) {
+    return (year % 400 == 0) || (year % 4 == 0 && year % 100 != 0);
+}
+
+// Ham validate date
+int isValidDate(char *dateStr) {
+    int d = 0, m = 0, y = 0;
+    int len = strlen(dateStr);
+    int i = 0;
+
+    // 1. Lay Ngay
+    while (i < len && dateStr[i] != '/') {
+        if (dateStr[i] < '0' || dateStr[i] > '9') return 0;
+        d = d * 10 + (dateStr[i] - '0');
+        i++;
+    }
+    if (i >= len || dateStr[i] != '/') return 0; 
+    i++; 
+
+    // 2. Lay Thang
+    while (i < len && dateStr[i] != '/') {
+        if (dateStr[i] < '0' || dateStr[i] > '9') return 0;
+        m = m * 10 + (dateStr[i] - '0');
+        i++;
+    }
+    if (i >= len || dateStr[i] != '/') return 0;
+    i++; 
+
+    // 3. Lay Nam
+    while (i < len) {
+        if (dateStr[i] == '\n' || dateStr[i] == '\0') break; 
+        if (dateStr[i] < '0' || dateStr[i] > '9') return 0;
+        y = y * 10 + (dateStr[i] - '0');
+        i++;
+    }
+
+    // Kiem tra logic
+    if (y < 2020) return 0;
+    if (m < 1 || m > 12) return 0;
+    if (d < 1) return 0;
+
+    int daysInMonth;
+    switch (m) {
+        case 4: case 6: case 9: case 11: daysInMonth = 30; break;
+        case 2: daysInMonth = isLeapYear(y) ? 29 : 28; break;
+        default: daysInMonth = 31;
+    }
+
+    if (d > daysInMonth) return 0;
+
+    return 1;
+}
+
+// Tim vi tri cua chuyen xe trong mang trips dua theo tripId
 // Tra ve -1 neu khong tim thay
 int findTripIndex(char *tripId) {
     for (int i = 0; i < tripCount; i++) {
@@ -79,7 +131,7 @@ int findTripIndex(char *tripId) {
     return -1;
 }
 
-// Tim vi tri (index) cua ve trong mang tickets dua theo ticketId
+// Tim vi tri cua ve trong mang tickets dua theo ticketId
 int findTicketIndex(char *ticketId) {
     for (int i = 0; i < ticketCount; i++) {
         if (strcmp(tickets[i].ticketId, ticketId) == 0) {
@@ -168,18 +220,28 @@ void f01_AddTrip() {
         printf("Dia chi diem den khong hop le.\n");
     }
 
+// Nhap ngay khoi hanh
     while (1) {
         printf("Ngay khoi hanh (dd/mm/yyyy): ");
         fgets(newTrip.date, 20, stdin);
         if (strlen(newTrip.date) > 0 && newTrip.date[strlen(newTrip.date) - 1] == '\n') {
             newTrip.date[strlen(newTrip.date) - 1] = '\0';
         }
-        if (hasData(newTrip.date))
-			break;
-        printf("Ngay khoi hanh khong hop le.\n");
+
+        if (hasData(newTrip.date) == 0) {
+             printf("Ngay khoi hanh khong duoc de trong.\n");
+             continue;
+        }
+
+        if (isValidDate(newTrip.date) == 0) {
+            printf("Ngay khong hop le. Vui long kiem tra lai.\n");
+            continue;
+        }
+        
+        break;
     }
 
-    // Nhap tong so ghe (phai la so duong)
+    // Nhap tong so ghe
     do {
         printf("Tong so ghe: ");
         scanf("%d", &newTrip.totalSeats);
@@ -389,7 +451,7 @@ void f03_BookTicket() {
     } while (isSeatTaken);
 
     newTicket.seatNumber = seat;
-    printf("Nhap gia ve: ");
+    printf("Nhap gia ve (VND): ");
     scanf("%lf", &newTicket.price);
     clearInputBuffer();
 
@@ -538,17 +600,18 @@ void f07_ManageTicket() {
     clearInputBuffer();
 
     if (action == 1) { 
-        t->status = 1;
+        t->status = 1; // Khoa ve
         printf("Da khoa ve xe thanh cong.\n");
     } 
-    else if (action == 2) { 
+    else if (action == 2) { // Huy ve
         if (t->paymentStatus == 1) {
             printf("LOI: Khong the huy ve xe da thanh toan!\n");
         } else {
             t->status = 2; 
+            // Logic: Huy ve thi phai giam so ghe da dat cua chuyen xe
             int tripIdx = findTripIndex(t->tripId);
             if (tripIdx != -1) {
-                trips[tripIdx].bookedSeats--;
+                trips[tripIdx].bookedSeats--; // Giam di 1
             }
             printf("Huy ve xe thanh cong.\n");
         }
@@ -557,7 +620,78 @@ void f07_ManageTicket() {
     }
 }
 
-// Ham main
+// F08: Bao cao thong ke
+void f08_Reports() {
+    int type;
+    printf("\n8. BAO CAO THONG KE\n");
+    printf("1. Tong doanh thu\n");
+    printf("2. Thong ke theo chuyen xe\n");
+    printf("3. Thong ke theo thoi gian\n");
+    printf("Nhap lua chon: ");
+    scanf("%d", &type);
+    clearInputBuffer();
+
+    if (type == 1) { // Tong doanh thu toan bo
+        double totalRevenue = 0;
+        int paidCount = 0;
+        for (int i = 0; i < ticketCount; i++) {
+            // Chi tinh tien cac ve da thanh toan (paymentStatus == 1)
+            if (tickets[i].paymentStatus == 1) {
+                totalRevenue += tickets[i].price;
+                paidCount++;
+            }
+        }
+        printf("\nTONG DOANH THU: %lf VND\n", totalRevenue);
+        printf("Tong so ve xe da thanh toan: %d\n", paidCount);
+    } 
+    else if (type == 2) { // Thong ke chi tiet tung chuyen
+        printf("\n%-10s | %-8s | %-12s | %-5s | %-15s\n", "TripID", "Tong", "Da Thanh Toan", "Huy", "Doanh Thu");
+        for (int i = 0; i < tripCount; i++) {
+            char *currentTripId = trips[i].tripId;
+            int countTotal = 0, countPaid = 0, countCancel = 0;
+            double rev = 0;
+            
+            // Duyet qua toan bo ve de xem ve nao thuoc chuyen xe nay
+            for (int j = 0; j < ticketCount; j++) {
+                if (strcmp(tickets[j].tripId, currentTripId) == 0) {
+                    countTotal++;
+                    if (tickets[j].status == 2) countCancel++;
+                    if (tickets[j].paymentStatus == 1) {
+                        countPaid++;
+                        rev += tickets[j].price;
+                    }
+                }
+            }
+            printf("%-10s | %-8d | %-12d | %-5d | %.0lf\n", currentTripId, countTotal, countPaid, countCancel, rev);
+        }
+    } 
+    else if (type == 3) { // Loc theo ngay
+        char filterDate[20];
+        printf("Nhap ngay can loc (dd/mm/yyyy): ");
+        fgets(filterDate, 20, stdin);
+        if (strlen(filterDate) > 0 && filterDate[strlen(filterDate) - 1] == '\n') {
+            filterDate[strlen(filterDate) - 1] = '\0';
+        }
+        
+        printf("\nKet qua loc cho ngay: %s\n", filterDate);
+        double rev = 0;
+        int found = 0;
+        for (int i = 0; i < ticketCount; i++) {
+            if (strcmp(tickets[i].date, filterDate) == 0) {
+                printf("- Ve: %s | Gia: %.0lf | Status: %d\n", tickets[i].ticketId, tickets[i].price, tickets[i].status);
+                if (tickets[i].paymentStatus == 1) rev += tickets[i].price;
+                found++;
+            }
+        }
+        if (found == 0) printf("Khong co du lieu.\n");
+        else printf("Doanh thu trong ngay: %.0lf VND\n", rev);
+    } 
+    else {
+        printf("Loai bao cao khong hop le.\n");
+    }
+}
+
+// Ham chinh (Main Function)
 int main() {
     int choice;
     while (1) {
@@ -569,7 +703,7 @@ int main() {
         printf("|4. Tra cuu ve                |\n");
         printf("|5. Danh sach chuyen xe       |\n");
         printf("|6. Thanh toan                |\n");
-        printf("|7. Huy ve                    |\n");
+        printf("|7. Quan ly trang thai ve     |\n");
         printf("|8. Bao cao doanh thu         |\n");
         printf("|0. Thoat                     |\n");
         printf("+-----------------------------+\n");
@@ -606,6 +740,7 @@ int main() {
 				f07_ManageTicket();
 				break;
             case 8:
+				f08_Reports();
 				break;
             case 0:
 				printf("Thoat chuong trinh.");
